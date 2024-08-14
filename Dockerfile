@@ -1,22 +1,17 @@
-FROM node:16 AS base
-WORKDIR /base
-COPY package*.json ./
-RUN npm install
-COPY . .
+FROM node:20
 
-FROM base AS build
-ENV NODE_ENV=production
-WORKDIR /build
-COPY --from=base /base ./
-RUN npm run build
-
-FROM node:current-alpine AS production
-ENV NODE_ENV=production
 WORKDIR /app
-COPY --from=build /build/package*.json ./
-COPY --from=build /build/.next ./.next
-COPY --from=build /build/public ./public
-RUN npm install next
 
-EXPOSE 80
-CMD npm run start
+# add `/app/node_modules/.bin` to $PATH
+ENV PATH /app/node_modules/.bin:$PATH
+
+# install app dependencies
+COPY package.json yarn.lock* package-lock.json* ./
+
+RUN yarn
+
+# add app to container and attempt build
+COPY . ./
+RUN yarn build || true
+
+CMD ["yarn", "start"]
